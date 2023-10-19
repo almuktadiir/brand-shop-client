@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const brands = require('./brand.json');
 const app = express();
 const port = process.env.PORT || 5000;
@@ -33,6 +33,29 @@ async function run() {
     const database = client.db("brandsDB");
     const userCollection = database.collection("brands");
 
+    const cartCollection = client.db("brandsDB").collection("cart");
+
+    // cart collection 
+    app.get('/cartproducts', async (req, res)=> {
+      const cursor = cartCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+    app.post('/cartproducts',async (req, res)=> {
+        const product = req.body;
+        const result = await cartCollection.insertOne(product);
+        res.send(result);
+    })
+
+    app.delete('/cartproducts/:id', async(req, res)=> {
+      const id = req.params.id;
+      const query = {_id : new ObjectId(id)};
+      const result = await cartCollection.deleteOne(query);
+      res.send(result)
+    })
+
+    // user collection - add product
     app.get('/products',async (req, res)=>{
         const cursor = userCollection.find();
         const result = await cursor.toArray();
@@ -43,6 +66,26 @@ async function run() {
         const product = req.body;
         const result = await userCollection.insertOne(product);
         res.send(result)
+    })
+
+    app.put('/products/:id', async(req, res)=>{
+      const id = req.params.id;
+      const updateValue = req.body;
+      const filter = {_id : new ObjectId(id)};
+      const options = {upsert: true};
+      const updateProduct = {
+        $set: {
+          name: updateValue.productName, 
+          brand: updateValue.brand,
+          imageURL: updateValue.imageURL, 
+          productType: updateValue.productType, 
+          price: updateValue.price, 
+          rating: updateValue.rating, 
+          description: updateValue.description
+        }
+      }
+      const result = await userCollection.updateOne(filter, updateProduct, options);
+      res.send(result)
     })
 
 
